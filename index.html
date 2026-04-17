@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA Maintenance PRO</title>
+<title>CEDAPSA Tickets</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -20,8 +20,19 @@ body {
   margin: auto;
 }
 
-h1 {
+.header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
   margin-bottom: 20px;
+}
+
+.logo {
+  width: 50px;
+}
+
+h1 {
+  margin: 0;
 }
 
 .input-group {
@@ -35,7 +46,6 @@ input {
   padding: 12px;
   border-radius: 8px;
   border: none;
-  outline: none;
 }
 
 button {
@@ -45,6 +55,10 @@ button {
   background: #3b82f6;
   color: white;
   cursor: pointer;
+}
+
+button:hover {
+  background: #2563eb;
 }
 
 .card {
@@ -63,6 +77,11 @@ button {
 
 .pendiente { background: orange; }
 .completado { background: green; }
+
+hr {
+  margin: 20px 0;
+  border-color: #334155;
+}
 </style>
 </head>
 
@@ -70,9 +89,13 @@ button {
 
 <div class="container">
 
-  <h1>🛠️ CEDAPSA PRO</h1>
+  <div class="header">
+    <!-- 🔥 CAMBIA ESTE LOGO SI QUIERES -->
+    <img class="logo" src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png">
+    <h1>CEDAPSA Tickets</h1>
+  </div>
 
-  <!-- LOGIN / REGISTRO -->
+  <!-- LOGIN -->
   <div class="input-group">
     <input id="email" placeholder="Correo">
     <input id="password" type="password" placeholder="Contraseña">
@@ -86,7 +109,7 @@ button {
 
   <hr>
 
-  <!-- CREAR TICKET -->
+  <!-- CREAR -->
   <div class="input-group">
     <input id="txt" placeholder="Describe el problema...">
     <button onclick="crear()">Crear Ticket</button>
@@ -103,7 +126,7 @@ const supabase = window.supabase.createClient(
   "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
 );
 
-// 🔐 REGISTRO
+// REGISTRO
 async function registro() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -123,7 +146,7 @@ async function registro() {
   }
 }
 
-// 🔓 LOGIN
+// LOGIN
 async function login() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -136,18 +159,18 @@ async function login() {
   if (error) {
     alert(error.message);
   } else {
-    alert("Sesión iniciada");
+    alert("Bienvenido");
     cargar();
   }
 }
 
-// 🚪 LOGOUT
+// LOGOUT
 async function logout() {
   await supabase.auth.signOut();
   alert("Sesión cerrada");
 }
 
-// ➕ CREAR TICKET
+// CREAR TICKET
 async function crear() {
   const txt = document.getElementById("txt").value;
   if (!txt) return;
@@ -156,15 +179,13 @@ async function crear() {
     { descripcion: txt }
   ]);
 
-  if (error) {
-    alert(error.message);
-  }
+  if (error) alert(error.message);
 
   document.getElementById("txt").value = "";
   cargar();
 }
 
-// 📦 CARGAR LISTA
+// CARGAR
 async function cargar() {
   const { data } = await supabase
     .from("tickets")
@@ -182,7 +203,6 @@ async function cargar() {
     `).join("");
 }
 
-// 🚀 AUTO CARGA
 cargar();
 </script>
 
