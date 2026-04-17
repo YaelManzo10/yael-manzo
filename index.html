@@ -1,18 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>CEDAPSA</title>
+<meta charset="UTF-8">
+<title>CEDAPSA Maintenance</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  padding: 20px;
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+}
+
+.input-area {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-add { background: #007bff; color: white; }
+.btn-delete { background: #dc3545; color: white; }
+.btn-status { background: #28a745; color: white; }
+
+.ticket {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.estado {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: white;
+}
+
+.pendiente { background: orange; }
+.terminado { background: green; }
+
+.fecha {
+  font-size: 12px;
+  color: gray;
+}
+</style>
+
 </head>
-<body style="font-family: Arial; padding:20px;">
+
+<body>
+
+<div class="container">
 
 <h1>CEDAPSA Maintenance</h1>
 
-<input id="txt" placeholder="Descripción">
-<button onclick="crear()">Crear Ticket</button>
-
-<hr>
+<div class="input-area">
+  <input id="txt" placeholder="Descripción del problema">
+  <button class="btn-add" onclick="crear()">Crear</button>
+</div>
 
 <div id="lista"></div>
+
+</div>
 
 <script>
 const URL = "https://hovpsbjewyqoaobtxdie.supabase.co/rest/v1/tickets";
@@ -21,17 +97,49 @@ const APIKEY = "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT";
 async function crear() {
   const txt = document.getElementById("txt").value;
 
+  if (!txt) return;
+
   await fetch(URL, {
     method: "POST",
     headers: {
       "apikey": APIKEY,
-      "Content-Type": "application/json",
-      "Prefer": "return=minimal"
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({ descripcion: txt })
   });
 
+  document.getElementById("txt").value = "";
   cargar();
+}
+
+async function eliminar(id) {
+  await fetch(URL + "?id=eq." + id, {
+    method: "DELETE",
+    headers: {
+      "apikey": APIKEY
+    }
+  });
+
+  cargar();
+}
+
+async function cambiarEstado(id, actual) {
+  const nuevo = actual === "pendiente" ? "terminado" : "pendiente";
+
+  await fetch(URL + "?id=eq." + id, {
+    method: "PATCH",
+    headers: {
+      "apikey": APIKEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ estatus: nuevo })
+  });
+
+  cargar();
+}
+
+function formatearFecha(f) {
+  return new Date(f).toLocaleString();
 }
 
 async function cargar() {
@@ -44,7 +152,26 @@ async function cargar() {
   const data = await res.json();
 
   document.getElementById("lista").innerHTML =
-    data.map(t => `<p>${t.descripcion} - ${t.estatus}</p>`).join("");
+    data.map(t => `
+      <div class="ticket">
+        <div class="top">
+          <strong>${t.descripcion}</strong>
+          <span class="estado ${t.estatus}">${t.estatus}</span>
+        </div>
+
+        <div class="fecha">${formatearFecha(t.created_at)}</div>
+
+        <br>
+
+        <button class="btn-status" onclick="cambiarEstado('${t.id}','${t.estatus}')">
+          Cambiar estado
+        </button>
+
+        <button class="btn-delete" onclick="eliminar('${t.id}')">
+          Eliminar
+        </button>
+      </div>
+    `).join("");
 }
 
 cargar();
