@@ -2,9 +2,44 @@
 <html>
 <head>
   <title>CEDAPSA</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
-<body style="font-family: Arial; text-align:center; margin-top:50px;">
-  <h1>CEDAPSA Maintenance</h1>
-  <p>Sistema funcionando 🔥</p>
+
+<body style="font-family: Arial; padding: 20px">
+
+<h1>CEDAPSA Maintenance</h1>
+
+<input id="txt" placeholder="Descripción">
+<button onclick="crear()">Crear Ticket</button>
+
+<div id="lista"></div>
+
+<script>
+const supabase = window.supabase.createClient(
+  "https://hovpsbjewyqaoobtxdie.supabase.co",
+  "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
+);
+
+async function crear() {
+  const txt = document.getElementById("txt").value;
+
+  await supabase.from("tickets").insert([
+    { descripcion: txt }
+  ]);
+
+  cargar();
+}
+
+async function cargar() {
+  const { data } = await supabase.from("tickets").select("*");
+
+  document.getElementById("lista").innerHTML =
+    data.map(t => `<p>${t.descripcion} - ${t.estatus}</p>`).join("");
+}
+
+cargar();
+</script>
+
 </body>
 </html>
+
