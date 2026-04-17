@@ -16,7 +16,7 @@ body {
 }
 
 .container {
-  max-width: 700px;
+  max-width: 800px;
   margin: auto;
 }
 
@@ -28,7 +28,7 @@ body {
 }
 
 .logo {
-  width: 50px;
+  width: 55px;
 }
 
 h1 {
@@ -41,7 +41,7 @@ h1 {
   margin-bottom: 10px;
 }
 
-input {
+input, select {
   flex: 1;
   padding: 12px;
   border-radius: 8px;
@@ -66,8 +66,12 @@ button:hover {
   padding: 15px;
   border-radius: 10px;
   margin-bottom: 10px;
+}
+
+.row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .estado {
@@ -78,9 +82,18 @@ button:hover {
 .pendiente { background: orange; }
 .completado { background: green; }
 
+.admin {
+  margin-top: 10px;
+}
+
 hr {
   margin: 20px 0;
   border-color: #334155;
+}
+
+.user {
+  font-size: 12px;
+  opacity: 0.7;
 }
 </style>
 </head>
@@ -90,8 +103,7 @@ hr {
 <div class="container">
 
   <div class="header">
-    <!-- 🔥 CAMBIA ESTE LOGO SI QUIERES -->
-    <img class="logo" src="https://cdn-icons-png.flaticon.com/512/2921/2921222.png">
+    <img class="logo" src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
     <h1>CEDAPSA Tickets</h1>
   </div>
 
@@ -106,6 +118,8 @@ hr {
     <button onclick="login()">Entrar</button>
     <button onclick="logout()">Salir</button>
   </div>
+
+  <div id="userInfo"></div>
 
   <hr>
 
@@ -126,10 +140,12 @@ const supabase = window.supabase.createClient(
   "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
 );
 
-// REGISTRO
+let usuario = null;
+
+// 🔐 REGISTRO
 async function registro() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = emailInput();
+  const password = passInput();
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -139,71 +155,117 @@ async function registro() {
     }
   });
 
-  if (error) {
-    alert(error.message);
-  } else {
-    alert("Revisa tu correo para confirmar");
-  }
+  alert(error ? error.message : "Revisa tu correo para confirmar");
 }
 
-// LOGIN
+// 🔓 LOGIN
 async function login() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = emailInput();
+  const password = passInput();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
   });
 
-  if (error) {
-    alert(error.message);
-  } else {
-    alert("Bienvenido");
-    cargar();
-  }
+  if (error) return alert(error.message);
+
+  usuario = data.user;
+  mostrarUsuario();
+  cargar();
 }
 
-// LOGOUT
+// 🚪 LOGOUT
 async function logout() {
   await supabase.auth.signOut();
-  alert("Sesión cerrada");
+  usuario = null;
+  document.getElementById("userInfo").innerHTML = "";
+  document.getElementById("lista").innerHTML = "";
 }
 
-// CREAR TICKET
+// 👤 MOSTRAR USUARIO
+function mostrarUsuario() {
+  document.getElementById("userInfo").innerHTML =
+    `<p class="user">Sesión: ${usuario.email}</p>`;
+}
+
+// ➕ CREAR
 async function crear() {
+  if (!usuario) return alert("Inicia sesión");
+
   const txt = document.getElementById("txt").value;
+
   if (!txt) return;
 
-  const { error } = await supabase.from("tickets").insert([
-    { descripcion: txt }
+  await supabase.from("tickets").insert([
+    {
+      descripcion: txt,
+      estatus: "pendiente",
+      user_email: usuario.email
+    }
   ]);
-
-  if (error) alert(error.message);
 
   document.getElementById("txt").value = "";
   cargar();
 }
 
-// CARGAR
+// 📦 CARGAR
 async function cargar() {
   const { data } = await supabase
     .from("tickets")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (!data) return;
-
   document.getElementById("lista").innerHTML =
     data.map(t => `
       <div class="card">
-        <div>${t.descripcion}</div>
-        <div class="estado ${t.estatus}">${t.estatus}</div>
+        <div class="row">
+          <div>
+            <b>${t.descripcion}</b><br>
+            <span class="user">${t.user_email || "sin usuario"}</span>
+          </div>
+          <div class="estado ${t.estatus}">${t.estatus}</div>
+        </div>
+
+        <!-- ADMIN -->
+        <div class="admin">
+          <select onchange="cambiar('${t.id}', this.value)">
+            <option ${t.estatus=="pendiente"?"selected":""}>pendiente</option>
+            <option ${t.estatus=="completado"?"selected":""}>completado</option>
+          </select>
+        </div>
       </div>
     `).join("");
 }
 
-cargar();
+// 🔧 CAMBIAR ESTATUS (ADMIN)
+async function cambiar(id, estado) {
+  await supabase
+    .from("tickets")
+    .update({ estatus: estado })
+    .eq("id", id);
+
+  cargar();
+}
+
+// HELPERS
+function emailInput() {
+  return document.getElementById("email").value;
+}
+
+function passInput() {
+  return document.getElementById("password").value;
+}
+
+// AUTO LOGIN
+(async () => {
+  const { data } = await supabase.auth.getUser();
+  if (data.user) {
+    usuario = data.user;
+    mostrarUsuario();
+    cargar();
+  }
+})();
 </script>
 
 </body>
