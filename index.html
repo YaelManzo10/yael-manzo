@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CEDAPSA</title>
+  <meta charset="UTF-8">
+  <title>CEDAPSA Maintenance</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 
@@ -11,6 +12,8 @@
 
 <input id="txt" placeholder="Descripción">
 <button onclick="crear()">Crear Ticket</button>
+
+<hr>
 
 <div id="lista"></div>
 
@@ -29,13 +32,14 @@ async function crear() {
     return;
   }
 
-  const { error } = await supabase.from("tickets").insert([
+  const { error } = await supabase.from("Entradas").insert([
     { descripcion: txt }
   ]);
 
   if (error) {
-    console.log(error);
+    console.log("ERROR INSERT:", error);
     alert("Error al guardar");
+    return;
   }
 
   document.getElementById("txt").value = "";
@@ -44,7 +48,7 @@ async function crear() {
 
 // CARGAR TICKETS
 async function cargar() {
-  const { data, error } = await supabase.from("tickets").select("*");
+  const { data, error } = await supabase.from("Entradas").select("*");
 
   console.log("DATA:", data);
   console.log("ERROR:", error);
@@ -55,6 +59,11 @@ async function cargar() {
   }
 
   const contenedor = document.getElementById("lista");
+
+  if (!data || data.length === 0) {
+    contenedor.innerHTML = "<p>No hay tickets aún</p>";
+    return;
+  }
 
   contenedor.innerHTML =
     data.map(t => `<p>${t.descripcion} - ${t.estatus}</p>`).join("");
