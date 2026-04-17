@@ -1,12 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>CEDAPSA Maintenance</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <title>CEDAPSA</title>
 </head>
-
-<body style="font-family: Arial; padding: 20px">
+<body style="font-family: Arial; padding:20px;">
 
 <h1>CEDAPSA Maintenance</h1>
 
@@ -18,46 +15,38 @@
 <div id="lista"></div>
 
 <script>
-const supabase = window.supabase.createClient(
-  "https://hovpsbjewyqaoobtxdie.supabase.co",
-  "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
-);
+const URL = "https://hovpsbjewyqoaobtxdie.supabase.co/rest/v1/tickets";
+const APIKEY = "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT";
 
-// CREAR
 async function crear() {
   const txt = document.getElementById("txt").value;
 
-  if (!txt) return;
+  await fetch(URL, {
+    method: "POST",
+    headers: {
+      "apikey": APIKEY,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify({ descripcion: txt })
+  });
 
-  const { error } = await supabase.from("Entradas").insert([
-    { descripcion: txt }
-  ]);
-
-  if (error) {
-    console.log(error);
-    alert("Error al guardar");
-  }
-
-  document.getElementById("txt").value = "";
   cargar();
 }
 
-// CARGAR
 async function cargar() {
-  const { data, error } = await supabase.from("Entradas").select("*");
+  const res = await fetch(URL + "?select=*", {
+    headers: {
+      "apikey": APIKEY
+    }
+  });
 
-  console.log(data, error);
-
-  if (error) {
-    alert("Error al cargar");
-    return;
-  }
+  const data = await res.json();
 
   document.getElementById("lista").innerHTML =
     data.map(t => `<p>${t.descripcion} - ${t.estatus}</p>`).join("");
 }
 
-// INICIO
 cargar();
 </script>
 
