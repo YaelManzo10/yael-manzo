@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA Maintenance</title>
+<title>CEDAPSA Maintenance PRO</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body {
@@ -15,19 +15,19 @@ body {
   padding: 20px;
 }
 
-h1 {
-  margin-bottom: 20px;
-}
-
 .container {
   max-width: 700px;
   margin: auto;
 }
 
+h1 {
+  margin-bottom: 20px;
+}
+
 .input-group {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 input {
@@ -36,22 +36,15 @@ input {
   border-radius: 8px;
   border: none;
   outline: none;
-  font-size: 16px;
 }
 
 button {
-  padding: 12px 20px;
+  padding: 12px;
   border: none;
   border-radius: 8px;
   background: #3b82f6;
   color: white;
-  font-weight: bold;
   cursor: pointer;
-  transition: 0.2s;
-}
-
-button:hover {
-  background: #2563eb;
 }
 
 .card {
@@ -61,67 +54,124 @@ button:hover {
   margin-bottom: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  transition: 0.2s;
-}
-
-.card:hover {
-  transform: scale(1.02);
 }
 
 .estado {
   padding: 5px 10px;
   border-radius: 20px;
-  font-size: 12px;
 }
 
-.pendiente {
-  background: #f59e0b;
-}
-
-.completado {
-  background: #22c55e;
-}
+.pendiente { background: orange; }
+.completado { background: green; }
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h1>🛠️ CEDAPSA Maintenance</h1>
 
+  <h1>🛠️ CEDAPSA PRO</h1>
+
+  <!-- LOGIN / REGISTRO -->
   <div class="input-group">
-    <input id="txt" placeholder="Describe el problema...">
-    <button onclick="crear()">Crear</button>
+    <input id="email" placeholder="Correo">
+    <input id="password" type="password" placeholder="Contraseña">
   </div>
 
+  <div class="input-group">
+    <button onclick="registro()">Crear cuenta</button>
+    <button onclick="login()">Entrar</button>
+    <button onclick="logout()">Salir</button>
+  </div>
+
+  <hr>
+
+  <!-- CREAR TICKET -->
+  <div class="input-group">
+    <input id="txt" placeholder="Describe el problema...">
+    <button onclick="crear()">Crear Ticket</button>
+  </div>
+
+  <!-- LISTA -->
   <div id="lista"></div>
+
 </div>
 
 <script>
 const supabase = window.supabase.createClient(
   "https://hovpsbjewyqoaobtxdie.supabase.co",
-  "TU_API_KEY_AQUI"
+  "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
 );
 
+// 🔐 REGISTRO
+async function registro() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "https://project-r3fu4.vercel.app"
+    }
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Revisa tu correo para confirmar");
+  }
+}
+
+// 🔓 LOGIN
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Sesión iniciada");
+    cargar();
+  }
+}
+
+// 🚪 LOGOUT
+async function logout() {
+  await supabase.auth.signOut();
+  alert("Sesión cerrada");
+}
+
+// ➕ CREAR TICKET
 async function crear() {
   const txt = document.getElementById("txt").value;
-
   if (!txt) return;
 
-  await supabase.from("tickets").insert([
+  const { error } = await supabase.from("tickets").insert([
     { descripcion: txt }
   ]);
+
+  if (error) {
+    alert(error.message);
+  }
 
   document.getElementById("txt").value = "";
   cargar();
 }
 
+// 📦 CARGAR LISTA
 async function cargar() {
   const { data } = await supabase
     .from("tickets")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (!data) return;
 
   document.getElementById("lista").innerHTML =
     data.map(t => `
@@ -132,6 +182,7 @@ async function cargar() {
     `).join("");
 }
 
+// 🚀 AUTO CARGA
 cargar();
 </script>
 
