@@ -20,23 +20,47 @@ const supabase = window.supabase.createClient(
   "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
 );
 
+// CREAR TICKET
 async function crear() {
   const txt = document.getElementById("txt").value;
 
-  await supabase.from("tickets").insert([
+  if (!txt) {
+    alert("Escribe una descripción");
+    return;
+  }
+
+  const { error } = await supabase.from("tickets").insert([
     { descripcion: txt }
   ]);
 
+  if (error) {
+    console.log(error);
+    alert("Error al guardar");
+  }
+
+  document.getElementById("txt").value = "";
   cargar();
 }
 
+// CARGAR TICKETS
 async function cargar() {
-  const { data } = await supabase.from("tickets").select("*");
+  const { data, error } = await supabase.from("tickets").select("*");
 
-  document.getElementById("lista").innerHTML =
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  if (error) {
+    alert("Error al cargar datos");
+    return;
+  }
+
+  const contenedor = document.getElementById("lista");
+
+  contenedor.innerHTML =
     data.map(t => `<p>${t.descripcion} - ${t.estatus}</p>`).join("");
 }
 
+// INICIO
 cargar();
 </script>
 
