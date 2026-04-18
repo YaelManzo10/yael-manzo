@@ -2,135 +2,111 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA PRO</title>
+<title>CEDAPSA</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
 body { font-family: Arial; background:#0f172a; color:white; }
-.card { background:#1e293b; padding:10px; margin:10px 0; border-radius:10px; }
-button { margin:5px; padding:5px 10px; }
+.card { background:#1e293b; padding:10px; margin:10px; border-radius:10px; }
+button { margin:5px; }
+img { max-width:100px; }
 </style>
 </head>
 
 <body>
 
-<h2>🏢 CEDAPSA SISTEMA PRO</h2>
+<h2>🏢 CEDAPSA PANEL</h2>
 <div id="rol"></div>
 
 <input id="txt" placeholder="Nuevo ticket">
-<button onclick="crearTicket()">Crear</button>
+<input type="file" id="foto">
+<button onclick="crear()">Crear</button>
 
-<h3>📋 Tickets</h3>
 <div id="tickets"></div>
 
-<h3>💬 Chat</h3>
-<div id="chat"></div>
-<input id="msg">
-<button onclick="enviarMsg()">Enviar</button>
-
 <script>
-const supabase = window.supabase.createClient("TU_URL","TU_API_KEY");
+const supabase = window.supabase.createClient(
+  "TU_URL",
+  "TU_API_KEY"
+);
 
-let user, perfil, ticketActivo;
+let user, perfil;
 
-// 🔐 INIT
-async function init() {
-  const { data: { user: u } } = await supabase.auth.getUser();
-
-  if (!u) location.href = "index.html";
+async function init(){
+  const { data:{ user:u } } = await supabase.auth.getUser();
+  if(!u) location.href="index.html";
 
   user = u;
 
   const { data } = await supabase.from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+    .select("*").eq("id",user.id).single();
 
   perfil = data;
 
   document.getElementById("rol").innerText =
     perfil.rol === "admin" ? "ADMIN 👑" : "USUARIO 👤";
 
-  cargarTickets();
+  cargar();
 }
 
-// 🎫 CREAR TICKET
-async function crearTicket() {
+async function crear(){
   const txt = document.getElementById("txt").value;
+  const file = document.getElementById("foto").files[0];
+
+  let foto_url=null;
+
+  if(file){
+    const nombre = Date.now()+file.name;
+
+    await supabase.storage.from("imagenes").upload(nombre,file);
+
+    const { data } = supabase.storage
+      .from("imagenes")
+      .getPublicUrl(nombre);
+
+    foto_url = data.publicUrl;
+  }
 
   await supabase.from("tickets").insert([{
     descripcion: txt,
-    user_id: user.id
+    user_id: user.id,
+    foto_url
   }]);
 
-  cargarTickets();
+  cargar();
 }
 
-// 📋 CARGAR TICKETS
-async function cargarTickets() {
-
+async function cargar(){
   let query = supabase.from("tickets").select("*");
 
-  if (perfil.rol !== "admin") {
+  if(perfil.rol !== "admin"){
     query = query.eq("user_id", user.id);
   }
 
   const { data } = await query;
 
   document.getElementById("tickets").innerHTML =
-    data.map(t => `
+    data.map(t=>`
       <div class="card">
-        <b>${t.descripcion}</b>
-        <br>
-        Estado: ${t.estatus}
+        <b>${t.descripcion}</b><br>
+        Estado: ${t.estatus}<br>
+        ${t.foto_url ? `<img src="${t.foto_url}">` : ""}
 
-        <br>
-        <button onclick="abrirChat('${t.id}')">Abrir</button>
-
-        ${perfil.rol === "admin" ? `
-          <button onclick="estado('${t.id}','en_proceso')">Proceso</button>
+        ${perfil.rol==="admin"?`
+          <button onclick="estado('${t.id}','proceso')">Proceso</button>
           <button onclick="estado('${t.id}','cerrado')">Cerrar</button>
-        ` : ""}
+        `:""}
       </div>
     `).join("");
 }
 
-// 🔄 CAMBIAR ESTADO (ADMIN)
-async function estado(id, estatus) {
+async function estado(id,e){
   await supabase.from("tickets")
-    .update({ estatus })
-    .eq("id", id);
+    .update({estatus:e})
+    .eq("id",id);
 
-  cargarTickets();
-}
-
-// 💬 CHAT
-async function abrirChat(id) {
-  ticketActivo = id;
-  cargarMensajes();
-}
-
-async function enviarMsg() {
-  const texto = document.getElementById("msg").value;
-
-  await supabase.from("mensajes").insert([{
-    ticket_id: ticketActivo,
-    user_id: user.id,
-    texto
-  }]);
-
-  cargarMensajes();
-}
-
-async function cargarMensajes() {
-  const { data } = await supabase
-    .from("mensajes")
-    .select("*")
-    .eq("ticket_id", ticketActivo);
-
-  document.getElementById("chat").innerHTML =
-    data.map(m => `<div class="card">${m.texto}</div>`).join("");
+  cargar();
 }
 
 init();
