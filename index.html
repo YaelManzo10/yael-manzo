@@ -2,82 +2,95 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA Tickets</title>
+<title>CEDAPSA</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #0f172a;
-  color: white;
-  text-align: center;
-  padding: 40px;
+body{
+  background:#0f172a;
+  font-family:Segoe UI;
+  color:white;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-input {
-  padding: 12px;
-  margin: 10px;
-  border-radius: 8px;
-  border: none;
-  width: 250px;
+
+.box{
+  background:#1e293b;
+  padding:30px;
+  border-radius:12px;
+  width:300px;
+  text-align:center;
 }
-button {
-  padding: 12px 20px;
-  margin: 5px;
-  border-radius: 8px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  cursor: pointer;
+
+input{
+  width:100%;
+  margin:10px 0;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
+  cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🛠️ CEDAPSA Tickets</h1>
+<div class="box">
+  <img src="https://i.imgur.com/7kQEsHU.png" width="80">
+  <h2>CEDAPSA</h2>
 
-<input id="email" placeholder="Correo">
-<input id="pass" type="password" placeholder="Contraseña">
+  <input id="email" placeholder="Correo">
+  <input id="pass" type="password" placeholder="Contraseña">
 
-<br>
-
-<button onclick="signup()">Crear cuenta</button>
-<button onclick="login()">Entrar</button>
+  <button onclick="login()">Entrar</button>
+  <button onclick="register()">Crear cuenta</button>
+</div>
 
 <script>
-const SUPABASE_URL = "https://TU_PROYECTO.supabase.co";
-const SUPABASE_KEY = "TU_API_KEY";
+const supabase = window.supabase.createClient(
+  "TU_URL",
+  "TU_API_KEY"
+);
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-async function signup() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password: pass
-  });
-
-  if (error) alert(error.message);
-  else alert("Revisa tu correo para confirmar");
-}
-
-async function login() {
-  const email = document.getElementById("email").value;
-  const pass = document.getElementById("pass").value;
+async function login(){
+  const email = emailInput.value;
+  const password = pass.value;
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
-    password: pass
+    password
   });
 
-  if (error) {
-    alert(error.message);
-  } else {
-    window.location.href = "/yael-manzo/dashboard.html";
-  }
+  if(error) return alert(error.message);
+
+  location.href="dashboard.html";
+}
+
+async function register(){
+  const email = emailInput.value;
+  const password = pass.value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password
+  });
+
+  if(error) return alert(error.message);
+
+  alert("Cuenta creada");
 }
 </script>
 
