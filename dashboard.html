@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard - CEDAPSA</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0f172a;
+  color: white;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.header img {
+  width: 50px;
+}
+
+button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #dc2626;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
+    <h1>Dashboard CEDAPSA</h1>
+  </div>
+
+  <h2>Bienvenido 🚀</h2>
+  <p id="userEmail"></p>
+
+  <button onclick="logout()">Cerrar sesión</button>
+
+</div>
+
+<script>
+const supabase = window.supabase.createClient(
+  "https://hovpsbjewyqoaobtxdie.supabase.co",
+  "AQUI_PEGA_TU_ANON_KEY"
+);
+
+// 🔐 Verificar sesión
+async function checkUser() {
+  const { data, error } = await supabase.auth.getUser();
+
+  if (!data.user) {
+    window.location.href = "index.html";
+  } else {
+    document.getElementById("userEmail").innerText =
+      "Sesión iniciada como: " + data.user.email;
+  }
+}
+
+checkUser();
+
+// 🚪 Logout
+async function logout() {
+  await supabase.auth.signOut();
+  window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>
