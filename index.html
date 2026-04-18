@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>CEDAPSA Tickets</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
 body {
@@ -27,12 +27,8 @@ body {
   margin-bottom: 20px;
 }
 
-.logo {
-  width: 55px;
-}
-
-h1 {
-  margin: 0;
+.header img {
+  width: 50px;
 }
 
 .input-group {
@@ -41,59 +37,26 @@ h1 {
   margin-bottom: 10px;
 }
 
-input, select {
+input {
   flex: 1;
   padding: 12px;
   border-radius: 8px;
   border: none;
+  font-size: 16px;
 }
 
 button {
-  padding: 12px;
-  border: none;
+  padding: 12px 20px;
   border-radius: 8px;
+  border: none;
   background: #3b82f6;
   color: white;
+  font-weight: bold;
   cursor: pointer;
 }
 
 button:hover {
   background: #2563eb;
-}
-
-.card {
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-}
-
-.row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.estado {
-  padding: 5px 10px;
-  border-radius: 20px;
-}
-
-.pendiente { background: orange; }
-.completado { background: green; }
-
-.admin {
-  margin-top: 10px;
-}
-
-hr {
-  margin: 20px 0;
-  border-color: #334155;
-}
-
-.user {
-  font-size: 12px;
-  opacity: 0.7;
 }
 </style>
 </head>
@@ -103,169 +66,61 @@ hr {
 <div class="container">
 
   <div class="header">
-    <img class="logo" src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
+    <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
     <h1>CEDAPSA Tickets</h1>
   </div>
 
-  <!-- LOGIN -->
   <div class="input-group">
     <input id="email" placeholder="Correo">
-    <input id="password" type="password" placeholder="Contraseña">
+    <input id="password" type="password" placeholder="Password">
   </div>
 
   <div class="input-group">
-    <button onclick="registro()">Crear cuenta</button>
+    <button onclick="signup()">Crear cuenta</button>
     <button onclick="login()">Entrar</button>
-    <button onclick="logout()">Salir</button>
   </div>
-
-  <div id="userInfo"></div>
-
-  <hr>
-
-  <!-- CREAR -->
-  <div class="input-group">
-    <input id="txt" placeholder="Describe el problema...">
-    <button onclick="crear()">Crear Ticket</button>
-  </div>
-
-  <!-- LISTA -->
-  <div id="lista"></div>
 
 </div>
 
 <script>
 const supabase = window.supabase.createClient(
   "https://hovpsbjewyqoaobtxdie.supabase.co",
-  "sb_publishable_LFWYygez_5LNBgO2uFYGUQ_FDxAkrRT"
+  "TU_API_KEY_AQUI"
 );
 
-let usuario = null;
-
 // 🔐 REGISTRO
-async function registro() {
-  const email = emailInput();
-  const password = passInput();
+async function signup() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
   const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: "https://project-r3fu4.vercel.app"
-    }
-  });
-
-  alert(error ? error.message : "Revisa tu correo para confirmar");
-}
-
-// 🔓 LOGIN
-async function login() {
-  const email = emailInput();
-  const password = passInput();
-
-  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
   });
 
-  if (error) return alert(error.message);
-
-  usuario = data.user;
-  mostrarUsuario();
-  cargar();
-}
-
-// 🚪 LOGOUT
-async function logout() {
-  await supabase.auth.signOut();
-  usuario = null;
-  document.getElementById("userInfo").innerHTML = "";
-  document.getElementById("lista").innerHTML = "";
-}
-
-// 👤 MOSTRAR USUARIO
-function mostrarUsuario() {
-  document.getElementById("userInfo").innerHTML =
-    `<p class="user">Sesión: ${usuario.email}</p>`;
-}
-
-// ➕ CREAR
-async function crear() {
-  if (!usuario) return alert("Inicia sesión");
-
-  const txt = document.getElementById("txt").value;
-
-  if (!txt) return;
-
-  await supabase.from("tickets").insert([
-    {
-      descripcion: txt,
-      estatus: "pendiente",
-      user_email: usuario.email
-    }
-  ]);
-
-  document.getElementById("txt").value = "";
-  cargar();
-}
-
-// 📦 CARGAR
-async function cargar() {
-  const { data } = await supabase
-    .from("tickets")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  document.getElementById("lista").innerHTML =
-    data.map(t => `
-      <div class="card">
-        <div class="row">
-          <div>
-            <b>${t.descripcion}</b><br>
-            <span class="user">${t.user_email || "sin usuario"}</span>
-          </div>
-          <div class="estado ${t.estatus}">${t.estatus}</div>
-        </div>
-
-        <!-- ADMIN -->
-        <div class="admin">
-          <select onchange="cambiar('${t.id}', this.value)">
-            <option ${t.estatus=="pendiente"?"selected":""}>pendiente</option>
-            <option ${t.estatus=="completado"?"selected":""}>completado</option>
-          </select>
-        </div>
-      </div>
-    `).join("");
-}
-
-// 🔧 CAMBIAR ESTATUS (ADMIN)
-async function cambiar(id, estado) {
-  await supabase
-    .from("tickets")
-    .update({ estatus: estado })
-    .eq("id", id);
-
-  cargar();
-}
-
-// HELPERS
-function emailInput() {
-  return document.getElementById("email").value;
-}
-
-function passInput() {
-  return document.getElementById("password").value;
-}
-
-// AUTO LOGIN
-(async () => {
-  const { data } = await supabase.auth.getUser();
-  if (data.user) {
-    usuario = data.user;
-    mostrarUsuario();
-    cargar();
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Cuenta creada 🚀");
   }
-})();
+}
+
+// 🔐 LOGIN + REDIRECCIÓN
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert(error.message);
+  } else {
+    window.location.href = "dashboard.html";
+  }
+}
 </script>
 
 </body>
