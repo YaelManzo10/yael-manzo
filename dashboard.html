@@ -2,26 +2,38 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA</title>
-
+<title>CEDAPSA Sistema</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-body { font-family: Arial; background:#0f172a; color:white; }
-.card { background:#1e293b; padding:10px; margin:10px; border-radius:10px; }
-button { margin:5px; }
-img { max-width:100px; }
+body{font-family:Segoe UI;background:#0f172a;color:white;padding:20px}
+.header{display:flex;gap:10px;align-items:center;margin-bottom:20px}
+.badge{padding:4px 10px;border-radius:10px;font-size:12px}
+.admin{background:#22c55e}
+.user{background:#3b82f6}
+.card{background:#1e293b;padding:12px;margin:10px 0;border-radius:10px}
+.row{display:flex;gap:10px;margin-bottom:10px}
+input,button,select{padding:8px;border-radius:8px;border:none}
+button{background:#3b82f6;color:white;cursor:pointer}
+.chat{background:#020617;padding:8px;margin-top:8px;border-radius:8px}
+img{max-width:100px;border-radius:6px;margin-top:5px}
+.small{font-size:12px;opacity:.7}
 </style>
 </head>
 
 <body>
 
-<h2>🏢 CEDAPSA PANEL</h2>
-<div id="rol"></div>
+<div class="header">
+  <h2>🏢 CEDAPSA</h2>
+  <span id="rol"></span>
+  <button onclick="logout()">Salir</button>
+</div>
 
-<input id="txt" placeholder="Nuevo ticket">
-<input type="file" id="foto">
-<button onclick="crear()">Crear</button>
+<div class="row">
+  <input id="txt" placeholder="Describe el problema...">
+  <input type="file" id="foto">
+  <button onclick="crear()">Crear Ticket</button>
+</div>
 
 <div id="tickets"></div>
 
@@ -31,35 +43,47 @@ const supabase = window.supabase.createClient(
   "TU_API_KEY"
 );
 
-let user, perfil;
+let user, perfil, ticketActivo=null;
 
+// 🔐 init
 async function init(){
   const { data:{ user:u } } = await supabase.auth.getUser();
-  if(!u) location.href="index.html";
-
+  if(!u){ location.href="index.html"; return; }
   user = u;
 
-  const { data } = await supabase.from("profiles")
-    .select("*").eq("id",user.id).single();
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
 
   perfil = data;
 
-  document.getElementById("rol").innerText =
-    perfil.rol === "admin" ? "ADMIN 👑" : "USUARIO 👤";
+  document.getElementById("rol").innerHTML =
+    perfil.rol === "admin"
+      ? '<span class="badge admin">ADMIN 👑</span>'
+      : '<span class="badge user">USUARIO 👤</span>';
 
   cargar();
+  realtime();
 }
 
+// ➕ crear ticket (con foto)
 async function crear(){
-  const txt = document.getElementById("txt").value;
+  const txt = document.getElementById("txt").value.trim();
   const file = document.getElementById("foto").files[0];
 
-  let foto_url=null;
+  if(!txt) return;
+
+  let foto_url = null;
 
   if(file){
-    const nombre = Date.now()+file.name;
+    const nombre = Date.now() + "_" + file.name;
+    const { error: upErr } = await supabase.storage
+      .from("imagenes")
+      .upload(nombre, file);
 
-    await supabase.storage.from("imagenes").upload(nombre,file);
+    if(upErr){ alert(upErr.message); return; }
 
     const { data } = supabase.storage
       .from("imagenes")
@@ -68,45 +92,125 @@ async function crear(){
     foto_url = data.publicUrl;
   }
 
-  await supabase.from("tickets").insert([{
+  const { error } = await supabase.from("tickets").insert([{
     descripcion: txt,
     user_id: user.id,
     foto_url
   }]);
 
+  if(error){ alert(error.message); return; }
+
+  document.getElementById("txt").value = "";
+  document.getElementById("foto").value = "";
   cargar();
 }
 
+// 📥 cargar tickets (admin ve todo / usuario solo los suyos)
 async function cargar(){
-  let query = supabase.from("tickets").select("*");
+  let query = supabase
+    .from("tickets")
+    .select("*")
+    .order("created_at", { ascending:false });
 
   if(perfil.rol !== "admin"){
     query = query.eq("user_id", user.id);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if(error){ alert(error.message); return; }
 
   document.getElementById("tickets").innerHTML =
     data.map(t=>`
       <div class="card">
-        <b>${t.descripcion}</b><br>
-        Estado: ${t.estatus}<br>
+        <div><b>${t.descripcion}</b></div>
+        <div class="small">Estado: ${t.estatus || 'pendiente'}</div>
         ${t.foto_url ? `<img src="${t.foto_url}">` : ""}
 
-        ${perfil.rol==="admin"?`
-          <button onclick="estado('${t.id}','proceso')">Proceso</button>
-          <button onclick="estado('${t.id}','cerrado')">Cerrar</button>
-        `:""}
+        <div class="row">
+          <button onclick="abrirChat('${t.id}')">Chat</button>
+
+          ${perfil.rol === "admin" ? `
+            <select onchange="estado('${t.id}', this.value)">
+              <option ${t.estatus==='pendiente'?'selected':''}>pendiente</option>
+              <option ${t.estatus==='proceso'?'selected':''}>proceso</option>
+              <option ${t.estatus==='cerrado'?'selected':''}>cerrado</option>
+            </select>
+          ` : ""}
+        </div>
+
+        <div id="chat-${t.id}" class="chat" style="display:${ticketActivo===t.id?'block':'none'}"></div>
+        <div id="box-${t.id}" class="row" style="display:${ticketActivo===t.id?'flex':'none'}">
+          <input id="msg-${t.id}" placeholder="mensaje">
+          <button onclick="enviar('${t.id}')">Enviar</button>
+        </div>
       </div>
     `).join("");
+
+  if(ticketActivo) cargarChat(ticketActivo);
 }
 
-async function estado(id,e){
-  await supabase.from("tickets")
-    .update({estatus:e})
-    .eq("id",id);
+// 🔄 cambiar estado (admin)
+async function estado(id, e){
+  const { error } = await supabase
+    .from("tickets")
+    .update({ estatus: e })
+    .eq("id", id);
 
+  if(error) alert(error.message);
   cargar();
+}
+
+// 💬 chat
+function abrirChat(id){
+  ticketActivo = id;
+  cargar();
+}
+
+async function enviar(id){
+  const input = document.getElementById("msg-"+id);
+  const texto = input.value.trim();
+  if(!texto) return;
+
+  const { error } = await supabase.from("mensajes").insert([{
+    ticket_id: id,
+    user_id: user.id,
+    texto
+  }]);
+
+  if(error){ alert(error.message); return; }
+
+  input.value="";
+  cargarChat(id);
+}
+
+async function cargarChat(id){
+  const { data } = await supabase
+    .from("mensajes")
+    .select("*")
+    .eq("ticket_id", id)
+    .order("created_at");
+
+  document.getElementById("chat-"+id).innerHTML =
+    data.map(m=>`<div class="small">💬 ${m.texto}</div>`).join("");
+}
+
+// 🔴 realtime (tickets + mensajes)
+function realtime(){
+  supabase.channel("tickets-ch")
+    .on("postgres_changes",{event:"*",schema:"public",table:"tickets"},()=>cargar())
+    .subscribe();
+
+  supabase.channel("mensajes-ch")
+    .on("postgres_changes",{event:"*",schema:"public",table:"mensajes"},()=>{
+      if(ticketActivo) cargarChat(ticketActivo);
+    })
+    .subscribe();
+}
+
+// 🚪 logout
+async function logout(){
+  await supabase.auth.signOut();
+  location.href = "index.html";
 }
 
 init();
