@@ -26,18 +26,29 @@ body {
   width: 50px;
 }
 
-.admin {
-  background: #22c55e;
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-size: 12px;
+.admin { background: #22c55e; padding: 5px 10px; border-radius: 10px; }
+.user { background: #3b82f6; padding: 5px 10px; border-radius: 10px; }
+
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.user {
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+button {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
   background: #3b82f6;
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-size: 12px;
+  color: white;
+  cursor: pointer;
 }
 
 .card {
@@ -52,12 +63,17 @@ body {
 <body>
 
 <div class="header">
-  <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
-  <h2>CEDAPSA Dashboard</h2>
+  <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647">
+  <h2>CEDAPSA Tickets</h2>
   <span id="rol"></span>
 </div>
 
-<div id="contenido"></div>
+<div class="input-group">
+  <input id="txt" placeholder="Describe el problema...">
+  <button onclick="crearTicket()">Crear Ticket</button>
+</div>
+
+<div id="tickets"></div>
 
 <script>
 const supabase = window.supabase.createClient(
@@ -65,7 +81,11 @@ const supabase = window.supabase.createClient(
   "TU_API_KEY"
 );
 
-async function cargarPerfil() {
+let usuarioActual = null;
+let perfilActual = null;
+
+// 🔐 Cargar usuario
+async function iniciar() {
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -74,38 +94,65 @@ async function cargarPerfil() {
     return;
   }
 
+  usuarioActual = user;
+
   const { data: perfil } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
-  const rolDiv = document.getElementById("rol");
-  const contenido = document.getElementById("contenido");
+  perfilActual = perfil;
 
   if (perfil.rol === "admin") {
-    rolDiv.innerHTML = '<span class="admin">ADMIN 👑</span>';
-
-    contenido.innerHTML = `
-      <div class="card">
-        <h3>Panel Admin</h3>
-        <p>Puedes ver todos los tickets</p>
-      </div>
-    `;
-
+    document.getElementById("rol").innerHTML = '<span class="admin">ADMIN 👑</span>';
   } else {
-    rolDiv.innerHTML = '<span class="user">USUARIO 👤</span>';
-
-    contenido.innerHTML = `
-      <div class="card">
-        <h3>Panel Usuario</h3>
-        <p>Solo ves tus tickets</p>
-      </div>
-    `;
+    document.getElementById("rol").innerHTML = '<span class="user">USUARIO 👤</span>';
   }
+
+  cargarTickets();
 }
 
-cargarPerfil();
+// 🎯 Crear ticket
+async function crearTicket() {
+  const txt = document.getElementById("txt").value;
+
+  if (!txt) return;
+
+  await supabase.from("tickets").insert([{
+    descripcion: txt,
+    user_id: usuarioActual.id
+  }]);
+
+  document.getElementById("txt").value = "";
+  cargarTickets();
+}
+
+// 📊 Cargar tickets
+async function cargarTickets() {
+
+  let query = supabase
+    .from("tickets")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // 👑 Admin ve TODO
+  if (perfilActual.rol !== "admin") {
+    query = query.eq("user_id", usuarioActual.id);
+  }
+
+  const { data } = await query;
+
+  document.getElementById("tickets").innerHTML =
+    data.map(t => `
+      <div class="card">
+        <div><b>${t.descripcion}</b></div>
+        <div>Estado: ${t.estatus || "pendiente"}</div>
+      </div>
+    `).join("");
+}
+
+iniciar();
 </script>
 
 </body>
