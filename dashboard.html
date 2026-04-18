@@ -2,168 +2,110 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard</title>
+<title>CEDAPSA Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
 body {
-  font-family: 'Segoe UI';
+  font-family: 'Segoe UI', sans-serif;
   background: #0f172a;
   color: white;
+  margin: 0;
   padding: 20px;
 }
-input, select {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
 }
-button {
-  padding: 10px;
+
+.header img {
+  width: 50px;
+}
+
+.admin {
+  background: #22c55e;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.user {
   background: #3b82f6;
-  border: none;
-  border-radius: 8px;
-  color: white;
-  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 12px;
 }
+
 .card {
   background: #1e293b;
-  margin: 10px 0;
   padding: 15px;
   border-radius: 10px;
+  margin-top: 10px;
 }
-.pendiente { background: orange; }
-.proceso { background: blue; }
-.terminado { background: green; }
 </style>
 </head>
 
 <body>
 
-<h1>📊 CEDAPSA Dashboard</h1>
+<div class="header">
+  <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647&v=beta&t=Mbt4yKIoqvPVNZUD6V8PBP_imBDZOxIEva4Az4voYyA">
+  <h2>CEDAPSA Dashboard</h2>
+  <span id="rol"></span>
+</div>
 
-<button onclick="logout()">Salir</button>
-
-<hr>
-
-<input id="txt" placeholder="Problema">
-<input type="file" id="foto">
-<button onclick="crear()">Crear Ticket</button>
-
-<h2>Tickets</h2>
-<div id="lista"></div>
+<div id="contenido"></div>
 
 <script>
-const SUPABASE_URL = "https://TU_PROYECTO.supabase.co";
-const SUPABASE_KEY = "TU_API_KEY";
+const supabase = window.supabase.createClient(
+  "TU_URL",
+  "TU_API_KEY"
+);
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+async function cargarPerfil() {
 
-let user;
-let admin = false;
+  const { data: { user } } = await supabase.auth.getUser();
 
-// 🔐 validar sesión
-async function init() {
-  const res = await supabase.auth.getUser();
-
-  if (!res.data.user) {
-    window.location.href = "/yael-manzo/index.html";
+  if (!user) {
+    window.location.href = "index.html";
     return;
   }
 
-  user = res.data.user;
-
-  // 👑 define admin
-  if (user.email === "tu_correo@empresa.com") {
-    admin = true;
-  }
-
-  cargar();
-}
-
-init();
-
-// ➕ crear ticket
-async function crear() {
-  const txt = document.getElementById("txt").value;
-  const file = document.getElementById("foto").files[0];
-
-  let foto_url = null;
-
-  if (file) {
-    const nombre = Date.now() + "_" + file.name;
-
-    await supabase.storage
-      .from("imagenes")
-      .upload(nombre, file);
-
-    const { data } = supabase.storage
-      .from("imagenes")
-      .getPublicUrl(nombre);
-
-    foto_url = data.publicUrl;
-  }
-
-  await supabase.from("tickets").insert([
-    {
-      descripcion: txt,
-      user_email: user.email,
-      estatus: "pendiente",
-      foto_url
-    }
-  ]);
-
-  cargar();
-}
-
-// 📥 cargar tickets
-async function cargar() {
-  let query = supabase
-    .from("tickets")
+  const { data: perfil } = await supabase
+    .from("profiles")
     .select("*")
-    .order("created_at", { ascending: false });
+    .eq("id", user.id)
+    .single();
 
-  if (!admin) {
-    query = query.eq("user_email", user.email);
-  }
+  const rolDiv = document.getElementById("rol");
+  const contenido = document.getElementById("contenido");
 
-  const { data } = await query;
+  if (perfil.rol === "admin") {
+    rolDiv.innerHTML = '<span class="admin">ADMIN 👑</span>';
 
-  document.getElementById("lista").innerHTML =
-    data.map(t => `
+    contenido.innerHTML = `
       <div class="card">
-        <b>${t.descripcion}</b><br>
-        👤 ${t.user_email}<br>
-        📌 ${t.estatus}<br>
-        ${t.foto_url ? `<img src="${t.foto_url}" width="100">` : ""}
-
-        ${admin ? `
-          <br>
-          <select onchange="cambiar('${t.id}', this.value)">
-            <option ${t.estatus==='pendiente'?'selected':''}>pendiente</option>
-            <option ${t.estatus==='proceso'?'selected':''}>proceso</option>
-            <option ${t.estatus==='terminado'?'selected':''}>terminado</option>
-          </select>
-        ` : ""}
+        <h3>Panel Admin</h3>
+        <p>Puedes ver todos los tickets</p>
       </div>
-    `).join("");
+    `;
+
+  } else {
+    rolDiv.innerHTML = '<span class="user">USUARIO 👤</span>';
+
+    contenido.innerHTML = `
+      <div class="card">
+        <h3>Panel Usuario</h3>
+        <p>Solo ves tus tickets</p>
+      </div>
+    `;
+  }
 }
 
-// 🔄 cambiar estado (admin)
-async function cambiar(id, estado) {
-  await supabase
-    .from("tickets")
-    .update({ estatus: estado })
-    .eq("id", id);
-
-  cargar();
-}
-
-// 🚪 logout
-async function logout() {
-  await supabase.auth.signOut();
-  window.location.href = "/yael-manzo/index.html";
-}
+cargarPerfil();
 </script>
 
 </body>
