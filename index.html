@@ -1,98 +1,111 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>CEDAPSA</title>
+import { useState } from "react";
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+export default function Home() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-<style>
-body{
-  background:#0f172a;
-  font-family:Segoe UI;
-  color:white;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+  const handleLogin = async () => {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      window.location.href = "/dashboard";
+    } else {
+      alert("Datos incorrectos");
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        
+        <img src="/logo.png" style={styles.logo} />
+
+        <h2 style={styles.title}>CEDAPSA</h2>
+
+        <input
+          type="email"
+          placeholder="Correo"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={styles.input}
+        />
+
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={styles.input}
+        />
+
+        <button onClick={handleLogin} style={styles.button}>
+          Entrar
+        </button>
+
+        <button style={styles.buttonSecondary}>
+          Crear cuenta
+        </button>
+
+      </div>
+    </div>
+  );
 }
 
-.box{
-  background:#1e293b;
-  padding:30px;
-  border-radius:12px;
-  width:300px;
-  text-align:center;
-}
-
-input{
-  width:100%;
-  margin:10px 0;
-  padding:10px;
-  border-radius:8px;
-  border:none;
-}
-
-button{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
-  background:#3b82f6;
-  color:white;
-  cursor:pointer;
-}
-</style>
-</head>
-
-<body>
-
-<div class="box">
-  <img src="https://i.imgur.com/7kQEsHU.png" width="80">
-  <h2>CEDAPSA</h2>
-
-  <input id="email" placeholder="Correo">
-  <input id="pass" type="password" placeholder="Contraseña">
-
-  <button onclick="login()">Entrar</button>
-  <button onclick="register()">Crear cuenta</button>
-</div>
-
-<script>
-const supabase = window.supabase.createClient(
-  "TU_URL",
-  "TU_API_KEY"
-);
-
-async function login(){
-  const email = emailInput.value;
-  const password = pass.value;
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if(error) return alert(error.message);
-
-  location.href="dashboard.html";
-}
-
-async function register(){
-  const email = emailInput.value;
-  const password = pass.value;
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password
-  });
-
-  if(error) return alert(error.message);
-
-  alert("Cuenta creada");
-}
-</script>
-
-</body>
-</html>
+const styles = {
+  container: {
+    height: "100vh",
+    background: "#0b1a2b",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    background: "#1e2d3f",
+    padding: "40px",
+    borderRadius: "12px",
+    width: "320px",
+    textAlign: "center",
+  },
+  logo: {
+    width: "80px",
+    marginBottom: "10px",
+  },
+  title: {
+    color: "white",
+    marginBottom: "20px",
+  },
+  input: {
+    width: "100%",
+    padding: "10px",
+    marginBottom: "10px",
+    borderRadius: "8px",
+    border: "none",
+  },
+  button: {
+    width: "100%",
+    padding: "10px",
+    background: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    marginBottom: "10px",
+    cursor: "pointer",
+  },
+  buttonSecondary: {
+    width: "100%",
+    padding: "10px",
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+};
