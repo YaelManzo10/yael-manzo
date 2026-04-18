@@ -1,147 +1,20 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>CEDAPSA Panel</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
-<style>
-body{
-  font-family:Segoe UI;
-  background:#0f172a;
-  color:white;
+export default function Dashboard() {
+  return (
+    <div style={styles.container}>
+      <h1>Bienvenido a CEDAPSA</h1>
+      <p>Ya entraste correctamente 👌</p>
+    </div>
+  );
 }
 
-.header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:20px;
-  background:#020617;
-}
-
-.header img{
-  width:50px;
-}
-
-.container{
-  padding:20px;
-}
-
-input, button{
-  padding:10px;
-  border-radius:8px;
-  border:none;
-}
-
-button{
-  background:#3b82f6;
-  color:white;
-  cursor:pointer;
-}
-
-.card{
-  background:#1e293b;
-  padding:10px;
-  margin-top:10px;
-  border-radius:10px;
-}
-
-img{
-  max-width:120px;
-  margin-top:5px;
-}
-</style>
-</head>
-
-<body>
-
-<div class="header">
-  <img src="https://i.imgur.com/7kQEsHU.png">
-  <h2>CEDAPSA Tickets</h2>
-  <button onclick="logout()">Salir</button>
-</div>
-
-<div class="container">
-
-  <input id="txt" placeholder="Describe el problema...">
-  <input type="file" id="foto">
-  <button onclick="crear()">Crear Ticket</button>
-
-  <h3>Tickets</h3>
-  <div id="tickets"></div>
-
-</div>
-
-<script>
-const supabase = window.supabase.createClient(
-  "TU_URL",
-  "TU_API_KEY"
-);
-
-let user;
-
-async function init(){
-  const { data:{ user:u } } = await supabase.auth.getUser();
-
-  if(!u) location.href="index.html";
-
-  user = u;
-
-  cargar();
-}
-
-async function crear(){
-  const txt = document.getElementById("txt").value;
-  const file = document.getElementById("foto").files[0];
-
-  let foto_url = null;
-
-  if(file){
-    const nombre = Date.now()+file.name;
-
-    await supabase.storage.from("imagenes").upload(nombre,file);
-
-    const { data } = supabase.storage
-      .from("imagenes")
-      .getPublicUrl(nombre);
-
-    foto_url = data.publicUrl;
-  }
-
-  await supabase.from("tickets").insert([{
-    descripcion: txt,
-    user_id: user.id,
-    foto_url
-  }]);
-
-  cargar();
-}
-
-async function cargar(){
-  const { data } = await supabase
-    .from("tickets")
-    .select("*")
-    .eq("user_id", user.id);
-
-  document.getElementById("tickets").innerHTML =
-    data.map(t=>`
-      <div class="card">
-        <b>${t.descripcion}</b><br>
-        Estado: ${t.estatus}<br>
-        ${t.foto_url ? `<img src="${t.foto_url}">` : ""}
-      </div>
-    `).join("");
-}
-
-async function logout(){
-  await supabase.auth.signOut();
-  location.href="index.html";
-}
-
-init();
-</script>
-
-</body>
-</html>
+const styles = {
+  container: {
+    height: "100vh",
+    background: "#0b1a2b",
+    color: "white",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+};
