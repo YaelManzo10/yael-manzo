@@ -2,143 +2,78 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>CEDAPSA Dashboard</title>
+<title>CEDAPSA PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #0f172a;
-  color: white;
-  margin: 0;
-  padding: 20px;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.header img {
-  width: 50px;
-}
-
-.admin { background: #22c55e; padding: 5px 10px; border-radius: 10px; }
-.user { background: #3b82f6; padding: 5px 10px; border-radius: 10px; }
-
-.input-group {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-input {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-}
-
-button {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  cursor: pointer;
-}
-
-.card {
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-  margin-top: 10px;
-}
+body { font-family: Arial; background:#0f172a; color:white; }
+.card { background:#1e293b; padding:10px; margin:10px 0; border-radius:10px; }
+button { margin:5px; padding:5px 10px; }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <img src="https://media.licdn.com/dms/image/v2/C4E0BAQHQU86COt-8pw/company-logo_200_200/company-logo_200_200/0/1630611831751/cedapsa_mx_logo?e=2147483647">
-  <h2>CEDAPSA Tickets</h2>
-  <span id="rol"></span>
-</div>
+<h2>🏢 CEDAPSA SISTEMA PRO</h2>
+<div id="rol"></div>
 
-<div class="input-group">
-  <input id="txt" placeholder="Describe el problema...">
-  <button onclick="crearTicket()">Crear Ticket</button>
-</div>
+<input id="txt" placeholder="Nuevo ticket">
+<button onclick="crearTicket()">Crear</button>
 
+<h3>📋 Tickets</h3>
 <div id="tickets"></div>
 
+<h3>💬 Chat</h3>
+<div id="chat"></div>
+<input id="msg">
+<button onclick="enviarMsg()">Enviar</button>
+
 <script>
-const supabase = window.supabase.createClient(
-  "TU_URL",
-  "TU_API_KEY"
-);
+const supabase = window.supabase.createClient("TU_URL","TU_API_KEY");
 
-let usuarioActual = null;
-let perfilActual = null;
+let user, perfil, ticketActivo;
 
-// 🔐 Cargar usuario
-async function iniciar() {
+// 🔐 INIT
+async function init() {
+  const { data: { user: u } } = await supabase.auth.getUser();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  if (!u) location.href = "index.html";
 
-  if (!user) {
-    window.location.href = "index.html";
-    return;
-  }
+  user = u;
 
-  usuarioActual = user;
-
-  const { data: perfil } = await supabase
-    .from("profiles")
+  const { data } = await supabase.from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
-  perfilActual = perfil;
+  perfil = data;
 
-  if (perfil.rol === "admin") {
-    document.getElementById("rol").innerHTML = '<span class="admin">ADMIN 👑</span>';
-  } else {
-    document.getElementById("rol").innerHTML = '<span class="user">USUARIO 👤</span>';
-  }
+  document.getElementById("rol").innerText =
+    perfil.rol === "admin" ? "ADMIN 👑" : "USUARIO 👤";
 
   cargarTickets();
 }
 
-// 🎯 Crear ticket
+// 🎫 CREAR TICKET
 async function crearTicket() {
   const txt = document.getElementById("txt").value;
 
-  if (!txt) return;
-
   await supabase.from("tickets").insert([{
     descripcion: txt,
-    user_id: usuarioActual.id
+    user_id: user.id
   }]);
 
-  document.getElementById("txt").value = "";
   cargarTickets();
 }
 
-// 📊 Cargar tickets
+// 📋 CARGAR TICKETS
 async function cargarTickets() {
 
-  let query = supabase
-    .from("tickets")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let query = supabase.from("tickets").select("*");
 
-  // 👑 Admin ve TODO
-  if (perfilActual.rol !== "admin") {
-    query = query.eq("user_id", usuarioActual.id);
+  if (perfil.rol !== "admin") {
+    query = query.eq("user_id", user.id);
   }
 
   const { data } = await query;
@@ -146,13 +81,59 @@ async function cargarTickets() {
   document.getElementById("tickets").innerHTML =
     data.map(t => `
       <div class="card">
-        <div><b>${t.descripcion}</b></div>
-        <div>Estado: ${t.estatus || "pendiente"}</div>
+        <b>${t.descripcion}</b>
+        <br>
+        Estado: ${t.estatus}
+
+        <br>
+        <button onclick="abrirChat('${t.id}')">Abrir</button>
+
+        ${perfil.rol === "admin" ? `
+          <button onclick="estado('${t.id}','en_proceso')">Proceso</button>
+          <button onclick="estado('${t.id}','cerrado')">Cerrar</button>
+        ` : ""}
       </div>
     `).join("");
 }
 
-iniciar();
+// 🔄 CAMBIAR ESTADO (ADMIN)
+async function estado(id, estatus) {
+  await supabase.from("tickets")
+    .update({ estatus })
+    .eq("id", id);
+
+  cargarTickets();
+}
+
+// 💬 CHAT
+async function abrirChat(id) {
+  ticketActivo = id;
+  cargarMensajes();
+}
+
+async function enviarMsg() {
+  const texto = document.getElementById("msg").value;
+
+  await supabase.from("mensajes").insert([{
+    ticket_id: ticketActivo,
+    user_id: user.id,
+    texto
+  }]);
+
+  cargarMensajes();
+}
+
+async function cargarMensajes() {
+  const { data } = await supabase
+    .from("mensajes")
+    .select("*")
+    .eq("ticket_id", ticketActivo);
+
+  document.getElementById("chat").innerHTML =
+    data.map(m => `<div class="card">${m.texto}</div>`).join("");
+}
+
+init();
 </script>
 
 </body>
